@@ -1,4 +1,4 @@
-# Usa uma imagem leve e segura
+# Usa uma imagem menor e mais segura
 FROM node:18-alpine
 
 # Cria um usuário não-root para rodar a aplicação
@@ -7,30 +7,27 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 # Define o diretório de trabalho dentro do container
 WORKDIR /app
 
-# Copia os arquivos de dependências primeiro para aproveitar o cache
+# Copia apenas os arquivos necessários para instalar as dependências
 COPY package*.json ./
 
-# Ajusta permissões antes de instalar pacotes (para evitar `chown` demorado)
-RUN chown -R appuser:appgroup /app
-
-# Instala pacotes sem devDependencies e usa cache local para otimizar o tempo de build
-RUN npm ci --omit=dev --prefer-offline
+# Instala as dependências com `npm ci` (garante versões exatas)
+RUN npm ci --only=production
 
 # Copia o restante dos arquivos da aplicação
 COPY . .
 
-# Garante que os arquivos pertencem ao usuário correto
+# Define permissões para o usuário não-root
 RUN chown -R appuser:appgroup /app
 
-# Muda para usuário não-root para maior segurança
+# Define o usuário que executará o container
 USER appuser
 
-# Expõe a porta usada pelo servidor
+# Expõe a porta 4000 (ou a porta definida no .env)
 EXPOSE 4000
 
-# Adiciona um healthcheck para reiniciar automaticamente se o servidor travar
+# Adiciona um healthcheck para garantir que o container está rodando corretamente
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
     CMD curl -f http://localhost:4000/health || exit 1
 
-# Define o comando padrão de inicialização
+# Comando para iniciar a aplicação
 CMD ["npm", "start"]
