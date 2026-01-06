@@ -7,3 +7,7 @@ services:
       - "4000:4000"
     env_file:
       - .env
+    volumes:
+      # Persiste o banco de dados SQLite
+      - ./auth_logs.db:/app/auth_logs.db
+    restart: unless-stopped
