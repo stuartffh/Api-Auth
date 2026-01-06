@@ -8,7 +8,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 # Copia os arquivos de dependências primeiro (para aproveitar cache do Docker)
-COPY package*.json ./
+#COPY package*.json ./
 
 # Instala as dependências
 RUN npm ci --only=production
