@@ -14,12 +14,12 @@ COPY package*.json ./
 RUN npm ci --only=production
 
 # Copia o restante dos arquivos da aplicação
-COPY config/ ./config/
-COPY middleware/ ./middleware/
-COPY routes/ ./routes/
-COPY services/ ./services/
-COPY utils/ ./utils/
-COPY server.js ./
+#COPY config/ ./config/
+#COPY middleware/ ./middleware/
+#COPY routes/ ./routes/
+#COPY services/ ./services/
+#COPY utils/ ./utils/
+#COPY server.js ./
 
 # Expõe a porta 4000 (ou a porta definida no .env)
 EXPOSE 4000
