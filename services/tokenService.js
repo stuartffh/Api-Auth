@@ -6,9 +6,9 @@ class TokenService {
         this.db = database;
     }
 
-    async saveTokens(email, accessToken, idToken, refreshToken, expiresIn) {
+    async saveTokens(email, accessToken, idToken, refreshToken, expiresIn, accountancyToken = null) {
         const expiresAt = Math.floor(Date.now() / 1000) + expiresIn;
-        await this.db.saveTokens(email, accessToken, idToken, refreshToken, expiresAt);
+        await this.db.saveTokens(email, accessToken, idToken, refreshToken, expiresAt, accountancyToken);
     }
 
     async getTokens(email) {

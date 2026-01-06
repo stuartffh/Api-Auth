@@ -40,6 +40,7 @@ class Database {
                     accessToken TEXT, 
                     idToken TEXT, 
                     refreshToken TEXT, 
+                    accountancyToken TEXT,
                     expiresAt INTEGER
                 )
             `, (err) => {
@@ -47,6 +48,28 @@ class Database {
                     logger.error('Erro ao criar tabela user_tokens', err);
                 } else {
                     logger.info('Tabela user_tokens verificada/criada');
+                }
+            });
+
+            // Adiciona coluna accountancyToken se não existir (migração)
+            this.db.all("PRAGMA table_info(user_tokens)", (err, rows) => {
+                if (err) {
+                    logger.warn('Erro ao verificar estrutura da tabela', { error: err.message });
+                    return;
+                }
+                
+                // Verifica se rows é um array e se contém a coluna accountancyToken
+                const hasAccountancyToken = Array.isArray(rows) && rows.some(row => row.name === 'accountancyToken');
+                if (!hasAccountancyToken) {
+                    this.db.run(`
+                        ALTER TABLE user_tokens ADD COLUMN accountancyToken TEXT
+                    `, (alterErr) => {
+                        if (alterErr) {
+                            logger.warn('Erro ao adicionar coluna accountancyToken', { error: alterErr.message });
+                        } else {
+                            logger.info('Coluna accountancyToken adicionada à tabela user_tokens');
+                        }
+                    });
                 }
             });
         });
@@ -104,7 +127,7 @@ class Database {
         }
     }
 
-    async saveTokens(email, accessToken, idToken, refreshToken, expiresAt) {
+    async saveTokens(email, accessToken, idToken, refreshToken, expiresAt, accountancyToken = null) {
         if (!accessToken || !idToken || !refreshToken) {
             const error = new Error('Dados de tokens inválidos');
             logger.error('Erro ao salvar tokens: dados inválidos', error, { email: logger.maskEmail(email) });
@@ -113,16 +136,20 @@ class Database {
 
         try {
             await this.run(
-                `INSERT INTO user_tokens (email, accessToken, idToken, refreshToken, expiresAt) 
-                 VALUES (?, ?, ?, ?, ?) 
+                `INSERT INTO user_tokens (email, accessToken, idToken, refreshToken, accountancyToken, expiresAt) 
+                 VALUES (?, ?, ?, ?, ?, ?) 
                  ON CONFLICT(email) DO UPDATE SET 
                      accessToken = excluded.accessToken, 
                      idToken = excluded.idToken, 
                      refreshToken = excluded.refreshToken, 
+                     accountancyToken = excluded.accountancyToken,
                      expiresAt = excluded.expiresAt`,
-                [email, accessToken, idToken, refreshToken, expiresAt]
+                [email, accessToken, idToken, refreshToken, accountancyToken, expiresAt]
             );
-            logger.info('Tokens salvos no banco de dados', { email: logger.maskEmail(email) });
+            logger.info('Tokens salvos no banco de dados', { 
+                email: logger.maskEmail(email),
+                hasAccountancyToken: !!accountancyToken
+            });
         } catch (error) {
             logger.error('Erro ao salvar tokens', error, { email: logger.maskEmail(email) });
             throw error;

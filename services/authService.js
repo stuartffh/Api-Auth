@@ -1,10 +1,12 @@
 const cognitoConfig = require('../config/cognito');
 const logger = require('../utils/logger');
+const ContaAzulService = require('./contaAzulService');
 
 class AuthService {
     constructor(database, tokenService) {
         this.db = database;
         this.tokenService = tokenService;
+        this.contaAzulService = new ContaAzulService();
     }
 
     getClientIP(req) {
@@ -30,25 +32,41 @@ class AuthService {
                             result.getIdToken(),
                             result.getRefreshToken()
                         );
+                        
+                        // Obtém o accountancy-token do Conta Azul
+                        let accountancyToken = null;
+                        try {
+                            accountancyToken = await this.contaAzulService.getAccountancyToken(email, password);
+                        } catch (accountancyError) {
+                            // Não falha a autenticação se o accountancy-token falhar
+                            logger.warn('Falha ao obter accountancy-token, continuando autenticação', {
+                                email: logger.maskEmail(email),
+                                error: accountancyError.message
+                            });
+                        }
+                        
                         await this.tokenService.saveTokens(
                             email,
                             tokenData.accessToken,
                             tokenData.idToken,
                             tokenData.refreshToken,
-                            tokenData.expiresIn
+                            tokenData.expiresIn,
+                            accountancyToken
                         );
                         
                         logger.info('Autenticação bem-sucedida', {
                             email: logger.maskEmail(email),
                             isAdmin,
-                            ip: userIP
+                            ip: userIP,
+                            hasAccountancyToken: !!accountancyToken
                         });
 
                         resolve({
                             success: true,
                             accessToken: tokenData.accessToken,
                             idToken: tokenData.idToken,
-                            refreshToken: tokenData.refreshToken
+                            refreshToken: tokenData.refreshToken,
+                            accountancyToken: accountancyToken
                         });
                     } catch (error) {
                         logger.error('Erro ao processar autenticação bem-sucedida', error, {
@@ -94,25 +112,41 @@ class AuthService {
                                     result.getIdToken(),
                                     result.getRefreshToken()
                                 );
+                                
+                                // Obtém o accountancy-token do Conta Azul
+                                let accountancyToken = null;
+                                try {
+                                    accountancyToken = await this.contaAzulService.getAccountancyToken(email, password);
+                                } catch (accountancyError) {
+                                    // Não falha a autenticação se o accountancy-token falhar
+                                    logger.warn('Falha ao obter accountancy-token, continuando autenticação', {
+                                        email: logger.maskEmail(email),
+                                        error: accountancyError.message
+                                    });
+                                }
+                                
                                 await this.tokenService.saveTokens(
                                     email,
                                     tokenData.accessToken,
                                     tokenData.idToken,
                                     tokenData.refreshToken,
-                                    tokenData.expiresIn
+                                    tokenData.expiresIn,
+                                    accountancyToken
                                 );
 
                                 logger.info('Autenticação MFA bem-sucedida', {
                                     email: logger.maskEmail(email),
                                     isAdmin,
-                                    ip: userIP
+                                    ip: userIP,
+                                    hasAccountancyToken: !!accountancyToken
                                 });
 
                                 resolve({
                                     success: true,
                                     accessToken: tokenData.accessToken,
                                     idToken: tokenData.idToken,
-                                    refreshToken: tokenData.refreshToken
+                                    refreshToken: tokenData.refreshToken,
+                                    accountancyToken: accountancyToken
                                 });
                             } catch (error) {
                                 logger.error('Erro ao processar autenticação MFA bem-sucedida', error, {
@@ -179,23 +213,44 @@ class AuthService {
                         session.getIdToken(),
                         session.getRefreshToken()
                     );
+                    
+                    // Tenta obter accountancy-token novamente ao renovar tokens
+                    // Primeiro tenta recuperar do cache, se não tiver, tenta obter novo
+                    const cachedTokens = await this.tokenService.getTokens(email);
+                    let accountancyToken = cachedTokens?.accountancyToken || null;
+                    
+                    // Se não tem token em cache ou precisa renovar, tenta obter novo
+                    if (!accountancyToken && password) {
+                        try {
+                            accountancyToken = await this.contaAzulService.getAccountancyToken(email, password);
+                        } catch (accountancyError) {
+                            logger.warn('Falha ao obter accountancy-token ao renovar, mantendo cache', {
+                                email: logger.maskEmail(email),
+                                error: accountancyError.message
+                            });
+                        }
+                    }
+                    
                     await this.tokenService.saveTokens(
                         email,
                         tokenData.accessToken,
                         tokenData.idToken,
                         refreshToken,
-                        tokenData.expiresIn
+                        tokenData.expiresIn,
+                        accountancyToken
                     );
 
                     logger.info('Tokens renovados com sucesso', {
-                        email: logger.maskEmail(email)
+                        email: logger.maskEmail(email),
+                        hasAccountancyToken: !!accountancyToken
                     });
 
                     resolve({
                         success: true,
                         accessToken: tokenData.accessToken,
                         idToken: tokenData.idToken,
-                        refreshToken: refreshToken
+                        refreshToken: refreshToken,
+                        accountancyToken: accountancyToken
                     });
                 } catch (error) {
                     logger.error('Erro ao salvar tokens renovados', error, {
@@ -221,6 +276,7 @@ class AuthService {
                     accessToken: cachedTokens.accessToken,
                     idToken: cachedTokens.idToken,
                     refreshToken: cachedTokens.refreshToken,
+                    accountancyToken: cachedTokens.accountancyToken || null,
                     expiresAt: cachedTokens.expiresAt
                 };
             }
