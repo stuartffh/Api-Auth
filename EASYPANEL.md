@@ -74,3 +74,4 @@ Certifique-se de que estas variáveis estão configuradas no Easypanel:
 - `NODE_ENV` (opcional, padrão: production)
 
 
+

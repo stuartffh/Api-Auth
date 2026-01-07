@@ -62,7 +62,9 @@ async function capturarBookmarkState(accountancyToken, tenantId, reportId = '91d
     };
 
     try {
-        console.log(`🚀 Iniciando captura de bookmarkState para tenantId: ${tenantId}`);
+        console.log(`🚀 Iniciando captura de bookmarkState`);
+        console.log(`📋 TenantId consultado: ${tenantId}`);
+        console.log(`📊 ReportId: ${reportId}`);
 
         // Tentar limpar processos órfãos antes de iniciar (apenas Windows)
         console.log('🧹 Verificando processos órfãos do Chrome...');
@@ -200,17 +202,32 @@ async function capturarBookmarkState(accountancyToken, tenantId, reportId = '91d
         // Monitorar requisições para capturar bookmarkState
         page.on('request', request => {
             const url = request.url();
-            if (url.includes('/export') && request.method() === 'POST' && request.postData()) {
-                try {
-                    const body = JSON.parse(request.postData());
-                    if (body.bookmarkState) {
-                        bookmarkState = body.bookmarkState;
-                        console.log('✅ bookmarkState capturado!');
-                        console.log(`   Tamanho: ${bookmarkState.length} caracteres`);
-                        console.log(`   Preview: ${bookmarkState.substring(0, 50)}...`);
+            const method = request.method();
+            
+            // Log de requisições relacionadas ao bookmark/export
+            if (url.includes('/export') || url.includes('bookmark') || url.includes('powerbi') || url.includes('wabi')) {
+                console.log(`📡 Requisição detectada - TenantId: ${tenantId}`);
+                console.log(`   URL: ${url}`);
+                console.log(`   Método: ${method}`);
+                
+                if (request.postData()) {
+                    try {
+                        const body = JSON.parse(request.postData());
+                        console.log(`   Body disponível: Sim`);
+                        if (body.bookmarkState) {
+                            bookmarkState = body.bookmarkState;
+                            console.log('✅ bookmarkState capturado!');
+                            console.log(`   TenantId consultado: ${tenantId}`);
+                            console.log(`   Tamanho: ${bookmarkState.length} caracteres`);
+                            console.log(`   Preview: ${bookmarkState.substring(0, 50)}...`);
+                        } else {
+                            console.log(`   Body não contém bookmarkState`);
+                        }
+                    } catch (e) {
+                        console.log(`   Erro ao parsear body: ${e.message}`);
                     }
-                } catch (e) {
-                    // Ignorar erros de parse
+                } else {
+                    console.log(`   Body: Não disponível`);
                 }
             }
         });
@@ -270,7 +287,9 @@ async function capturarBookmarkState(accountancyToken, tenantId, reportId = '91d
 
         // Agora navegar até o dashboard
         const dashboardUrl = `https://mais.contaazul.com/#/dashboard-bi/${tenantId}/customer`;
-        console.log(`📊 Navegando até: ${dashboardUrl}`);
+        console.log(`📊 Navegando até o dashboard`);
+        console.log(`   TenantId: ${tenantId}`);
+        console.log(`   URL: ${dashboardUrl}`);
         
         if (!isConnected()) {
             throw new Error('Browser ou página não está mais conectado');
@@ -977,9 +996,12 @@ async function capturarBookmarkState(accountancyToken, tenantId, reportId = '91d
             let exportClicked = false;
             if (exportButton) {
                 try {
+                    console.log(`🖱️  Clicando em "Exportar PDF" para TenantId: ${tenantId}`);
+                    console.log(`📤 Iniciando requisição de exportação para TenantId: ${tenantId}`);
                     await exportButton.click();
                     exportClicked = true;
                     console.log('✅ Botão "Exportar PDF" clicado (via seletor CSS)!');
+                    console.log(`   TenantId: ${tenantId} - Aguardando resposta da requisição...`);
                 } catch (e) {
                     console.log('⚠️  Erro ao clicar no botão encontrado:', e.message);
                 }
@@ -1045,11 +1067,13 @@ async function capturarBookmarkState(accountancyToken, tenantId, reportId = '91d
                 
                 if (exportClicked) {
                     console.log('✅ Botão "Exportar PDF" clicado (via método alternativo)!');
+                    console.log(`   TenantId: ${tenantId} - Aguardando resposta da requisição...`);
                 }
             }
             
             if (exportClicked) {
                     console.log('✅ Botão "Exportar PDF" clicado!');
+                    console.log(`📤 Requisição de exportação iniciada para TenantId: ${tenantId}`);
                 await waitForTimeout(5000); // Aguardar requisição de exportação
                 } else {
                     console.log('⚠️  Botão "Exportar PDF" não encontrado');
