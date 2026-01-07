@@ -1,5 +1,5 @@
 const express = require('express');
-const { capturarBookmarkState } = require('../capturar-bookmarkstate-api');
+const { capturarBookmarkState } = require('../services/capturar-bookmarkstate-api');
 const logger = require('../utils/logger');
 
 /**
