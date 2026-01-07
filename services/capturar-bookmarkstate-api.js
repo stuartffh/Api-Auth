@@ -130,21 +130,51 @@ async function capturarBookmarkState(accountancyToken, tenantId, reportId = '91d
             console.log('📥 Tentando capturar via botão "Exportar PDF"...');
             
             try {
-                // Procurar botão de exportar
-                const exportButton = await page.$('button:has-text("Exportar PDF"), button[aria-label*="Exportar"], .ds-loader-button__content:has-text("Exportar")');
+                // Procurar botão de exportar usando XPath (mais confiável)
+                const exportButtonXPath = "//button[contains(text(), 'Exportar PDF')] | //button[contains(@aria-label, 'Exportar')] | //div[contains(@class, 'ds-loader-button') and contains(text(), 'Exportar')]";
+                const exportButtons = await page.$x(exportButtonXPath);
+                
+                // Se não encontrou com XPath, tentar com evaluate
+                let exportButton = exportButtons.length > 0 ? exportButtons[0] : null;
+                
+                if (!exportButton) {
+                    // Procurar por qualquer elemento que contenha o texto
+                    exportButton = await page.evaluateHandle(() => {
+                        const allElements = Array.from(document.querySelectorAll('button, div, span, a, [role="button"]'));
+                        return allElements.find(el => {
+                            const text = (el.textContent || el.innerText || '').trim();
+                            return text.includes('Exportar') && (text.includes('PDF') || text.includes('pdf'));
+                        });
+                    });
+                }
                 
                 if (exportButton) {
-                    // Clicar no botão
-                    await exportButton.click();
-                    console.log('✅ Botão "Exportar PDF" clicado!');
-                    
-                    // Aguardar requisição de exportação
-                    await waitForTimeout(3000);
+                    // Verificar se é um ElementHandle (XPath) ou JSHandle (evaluate)
+                    if (exportButton.asElement) {
+                        const element = exportButton.asElement();
+                        if (element) {
+                            await element.click();
+                            console.log('✅ Botão "Exportar PDF" clicado!');
+                            await waitForTimeout(3000);
+                        }
+                    } else if (exportButton.click) {
+                        // Se for um elemento direto
+                        await exportButton.click();
+                        console.log('✅ Botão "Exportar PDF" clicado!');
+                        await waitForTimeout(3000);
+                    } else {
+                        // Tentar clicar via evaluate
+                        await page.evaluate((el) => el.click(), exportButton);
+                        console.log('✅ Botão "Exportar PDF" clicado (via evaluate)!');
+                        await waitForTimeout(3000);
+                    }
                 } else {
                     console.log('⚠️  Botão "Exportar PDF" não encontrado');
+                    console.log('💡 Dica: O bookmarkState pode ser capturado automaticamente quando você clicar manualmente');
                 }
             } catch (e) {
                 console.log('⚠️  Erro ao clicar no botão:', e.message);
+                console.log('💡 Dica: O bookmarkState pode ser capturado automaticamente quando você clicar manualmente');
             }
         }
 
