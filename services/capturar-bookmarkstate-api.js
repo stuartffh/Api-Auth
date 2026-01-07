@@ -2,6 +2,14 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 
 /**
+ * Função auxiliar para substituir page.waitForTimeout (removido no Puppeteer moderno)
+ * @param {number} ms - Milissegundos para aguardar
+ */
+function waitForTimeout(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
  * Captura o bookmarkState para uma empresa específica
  * 
  * @param {string} accountancyToken - Token de autenticação do Conta Azul
@@ -85,7 +93,7 @@ async function capturarBookmarkState(accountancyToken, tenantId, reportId = '91d
         }
 
         // Aguardar um pouco para garantir que tudo carregou
-        await page.waitForTimeout(5000);
+        await waitForTimeout(5000);
 
         // Tentar obter bookmarkState via JavaScript do Power BI
         // Isso só funciona se o Power BI SDK estiver disponível
@@ -131,7 +139,7 @@ async function capturarBookmarkState(accountancyToken, tenantId, reportId = '91d
                     console.log('✅ Botão "Exportar PDF" clicado!');
                     
                     // Aguardar requisição de exportação
-                    await page.waitForTimeout(3000);
+                    await waitForTimeout(3000);
                 } else {
                     console.log('⚠️  Botão "Exportar PDF" não encontrado');
                 }
