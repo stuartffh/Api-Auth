@@ -25,9 +25,18 @@ async function capturarBookmarkState(accountancyToken, tenantId, reportId = '91d
 
         // Abrir navegador
         browser = await puppeteer.launch({
-            headless: headless,
+            headless: headless === true || headless === 'true' ? 'new' : false,
             defaultViewport: null,
-            args: ['--start-maximized', '--no-sandbox', '--disable-setuid-sandbox']
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--no-first-run',
+                '--no-zygote',
+                '--single-process',
+                '--disable-gpu'
+            ]
         });
 
         const page = await browser.newPage();

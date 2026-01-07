@@ -1,43 +1,45 @@
 # Usa a imagem oficial do Node.js
 FROM node:18
 
+# Instala dependências do sistema necessárias para o Puppeteer/Chrome
+RUN apt-get update && apt-get install -y \
+    wget \
+    gnupg \
+    ca-certificates \
+    fonts-liberation \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libatspi2.0-0 \
+    libcups2 \
+    libdbus-1-3 \
+    libdrm2 \
+    libgbm1 \
+    libgtk-3-0 \
+    libnspr4 \
+    libnss3 \
+    libx11-xcb1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxkbcommon0 \
+    libxrandr2 \
+    xdg-utils \
+    libu2f-udev \
+    libvulkan1 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Define o diretório de trabalho dentro do container
 WORKDIR /app
 
-# Define variável de ambiente para produção
-ENV NODE_ENV=production
-
-# Adiciona um build arg para forçar rebuild quando necessário
-# Use: docker build --build-arg CACHE_BUST=$(date +%s) ...
-ARG CACHE_BUST=1
-RUN echo "Build cache bust: $CACHE_BUST"
-
-# Copia os arquivos de dependências primeiro (para aproveitar cache do Docker)
+# Copia os arquivos necessários
 COPY package*.json ./
 
 # Instala as dependências
-RUN npm ci --only=production
+RUN npm install
 
-# Remove diretórios antigos se existirem (para garantir atualização)
-RUN rm -rf config middleware routes services utils 2>/dev/null || true
-
-# Copia todos os arquivos da aplicação
-# Usando COPY com timestamp para garantir atualização
-COPY --chown=node:node config/ ./config/
-COPY --chown=node:node middleware/ ./middleware/
-COPY --chown=node:node routes/ ./routes/
-COPY --chown=node:node services/ ./services/
-COPY --chown=node:node utils/ ./utils/
-COPY --chown=node:node server.js ./
-
-# Verifica se os arquivos foram copiados
-RUN test -f server.js || (echo "ERRO: server.js não encontrado" && exit 1) && \
-    test -d config || (echo "ERRO: config/ não encontrado" && exit 1) && \
-    test -d middleware || (echo "ERRO: middleware/ não encontrado" && exit 1) && \
-    test -d routes || (echo "ERRO: routes/ não encontrado" && exit 1) && \
-    test -d services || (echo "ERRO: services/ não encontrado" && exit 1) && \
-    test -d utils || (echo "ERRO: utils/ não encontrado" && exit 1) && \
-    echo "✅ Todos os arquivos foram copiados corretamente"
+# Copia o restante dos arquivos
+COPY . .
 
 # Expõe a porta 4000 (ou a porta definida no .env)
 EXPOSE 4000
