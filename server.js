@@ -35,6 +35,7 @@ try {
 
 // Rotas
 app.use(createAuthRoutes(db));
+app.use('/api/azulbi', require('./routes/azulbiRoutes')(db));
 
 // Middleware de tratamento de erros (deve ser o último)
 app.use(notFoundHandler);

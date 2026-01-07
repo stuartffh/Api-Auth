@@ -22,6 +22,7 @@
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "node-fetch": "^3.3.2",
+    "puppeteer": "^24.34.0",
     "readline-sync": "^1.4.10",
     "sqlite3": "^5.1.7"
   },

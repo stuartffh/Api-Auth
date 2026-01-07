@@ -73,3 +73,4 @@ Certifique-se de que estas variáveis estão configuradas no Easypanel:
 - `PORT` (opcional, padrão: 4000)
 - `NODE_ENV` (opcional, padrão: production)
 
+
